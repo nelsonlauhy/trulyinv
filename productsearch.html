@@ -67,6 +67,12 @@
                     <div id="productImageContainer" class="text-center mt-3">
                         <!-- Larger image will be displayed here -->
                     </div>
+                    <!-- Input for updating New Count -->
+                    <div class="form-group mt-3">
+                        <label for="newCountInput">Enter New Count:</label>
+                        <input type="number" id="newCountInput" class="form-control" placeholder="Enter new count">
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="updateNewCount()">Submit</button>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -84,18 +90,19 @@
     <script>
         // Firebase configuration
         const firebaseConfig = {
-            apiKey: "API_KEY",
-            authDomain: "trulymarket-c25b6.firebaseapp.com",
-            projectId: "trulymarket-c25b6",
-            storageBucket: "trulymarket-c25b6.firebasestorage.app",
-            messagingSenderId: "810610286008",
-            appId: "1:810610286008:web:847f3bc2c441e103a1434d",
-            measurementId: "G-KWN9XQD8K5"
+            apiKey: "AIzaSyCazEaRoRPmhKSA-RQzQOtPCx7bgYQ0r6w",
+            authDomain: "trulyinv.firebaseapp.com",
+            projectId: "trulyinv",
+            storageBucket: "trulyinv.firebasestorage.app",
+            messagingSenderId: "921488544809",
+            appId: "1:921488544809:web:002c34193d8ff0e0b3f838",
+            measurementId: "G-X6F6N8D194"
         };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        let currentDocId = null;  // To store the ID of the currently displayed product
 
         // Function to search products by title with client-side filtering
         function searchProducts() {
@@ -209,6 +216,7 @@
         }
 
         function viewProductDetails(docId) {
+            currentDocId = docId; // Store the current document ID for updates
             db.collection("productlist").doc(docId).get().then((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
@@ -233,6 +241,26 @@
             }).catch((error) => {
                 console.error("Error retrieving product details: ", error);
             });
+        }
+
+        function updateNewCount() {
+            const newCount = document.getElementById("newCountInput").value;
+            if (newCount === '' || isNaN(newCount)) {
+                alert("Please enter a valid number for the new count.");
+                return;
+            }
+
+            // Update the new count in Firebase
+            db.collection("productlist").doc(currentDocId).update({ newcount: parseInt(newCount) })
+                .then(() => {
+                    alert("New count updated successfully.");
+                    $('#productModal').modal('hide');
+                    searchProducts(); // Refresh the list to show the updated count
+                })
+                .catch((error) => {
+                    console.error("Error updating new count:", error);
+                    alert("Failed to update new count. Please try again.");
+                });
         }
     </script>
 </body>
