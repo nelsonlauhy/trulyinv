@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Search</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- Load html5-qrcode library locally -->
+    <script src="libs/html5-qrcode.min.js"></script>
 </head>
 <body>
     <div class="container mt-5">
@@ -22,13 +25,13 @@
         <div class="input-group mb-3">
             <input type="text" id="barcode" class="form-control" placeholder="Scanned barcode will appear here" readonly>
             <div class="input-group-append">
-                <button class="btn btn-secondary" onclick="startScanner()">Scan Barcode</button>
+                <button class="btn btn-secondary" onclick="startScanner()">Scan QR Code</button>
             </div>
         </div>
-        
-        <!-- Video element for ZXing scanner -->
-        <video id="preview" style="width: 100%; max-width: 400px; display: none; margin-top: 10px;"></video>
-        
+
+        <!-- QR Code Scanner Container -->
+        <div id="qr-reader" style="width: 100%; max-width: 400px; display: none; margin-top: 10px;"></div>
+
         <!-- Results Table -->
         <table class="table table-bordered table-striped mt-3" id="resultsTable" style="display: none;">
             <thead class="thead-dark">
@@ -78,7 +81,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/@zxing/library@latest"></script> <!-- ZXing library for barcode scanning -->
 
     <script>
         // Firebase configuration
@@ -107,7 +109,6 @@
                 return;
             }
 
-            // Fetch all records to filter client-side
             db.collection("productlist")
                 .get()
                 .then((querySnapshot) => {
@@ -117,7 +118,6 @@
                         const data = doc.data();
                         const title = data.title.toLowerCase();
 
-                        // Check if title contains the search text
                         if (title.includes(searchText)) {
                             found = true;
                             const row = document.createElement("tr");
@@ -133,7 +133,6 @@
                         }
                     });
 
-                    // Show the results table if records are found
                     document.getElementById("resultsTable").style.display = found ? "table" : "none";
 
                     if (!found) {
@@ -145,27 +144,81 @@
                 });
         }
 
-        // Function to start the barcode scanner
-        async function startScanner() {
-            const codeReader = new ZXing.BrowserBarcodeReader();
-            const previewElem = document.getElementById('preview');
-            const barcodeField = document.getElementById('barcode');
-
-            previewElem.style.display = 'block'; // Show the video element
-
-            try {
-                // Decode barcode from the video stream
-                const result = await codeReader.decodeOnceFromVideoDevice(null, 'preview');
-                barcodeField.value = result.text; // Display the barcode text in the input field
-                previewElem.style.display = 'none'; // Hide the video element
-                codeReader.reset(); // Stop the video stream
-            } catch (error) {
-                console.error(error);
-                alert("Failed to scan barcode. Please try again.");
-                previewElem.style.display = 'none'; // Hide the video element on error
+        function startScanner() {
+            if (typeof Html5Qrcode === 'undefined') {
+                alert("QR code scanner library failed to load. Please check your setup.");
+                return;
             }
+        
+            const qrCodeReader = new Html5Qrcode("qr-reader");
+            const barcodeField = document.getElementById('barcode');
+        
+            document.getElementById("qr-reader").style.display = "block";
+        
+            qrCodeReader.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                (decodedText) => {
+                    // Display the scanned barcode in the input field
+                    barcodeField.value = decodedText;
+        
+                    // Stop the QR scanner
+                    qrCodeReader.stop().then(() => {
+                        document.getElementById("qr-reader").style.display = "none";
+                    }).catch((err) => {
+                        console.error("Failed to stop the QR scanner:", err);
+                    });
+        
+                    // Search Firebase for the captured barcode
+                    searchByBarcode(decodedText);
+        
+                },
+                (errorMessage) => {
+                    console.warn("QR code scanning failed:", errorMessage);
+                }
+            ).catch((err) => {
+                console.error("Unable to start QR code scanner:", err);
+            });
         }
-
+        
+        // Function to search Firebase by barcode
+        function searchByBarcode(barcode) {
+            const tableBody = document.getElementById("resultsTableBody");
+            tableBody.innerHTML = ""; // Clear previous results
+        
+            // Query Firebase for records where `barcode` matches the scanned value
+            db.collection("productlist").where("barcode", "==", barcode).get()
+                .then((querySnapshot) => {
+                    if (querySnapshot.empty) {
+                        // No records found
+                        alert("No record found.");
+                        document.getElementById("resultsTable").style.display = "none";
+                    } else {
+                        // Records found, display them in the table
+                        querySnapshot.forEach((doc) => {
+                            const data = doc.data();
+        
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${data.title || ''}</td>
+                                <td>${data.qty || ''}</td>
+                                <td><img src="${data.imagesrc || ''}" alt="Product Image" style="width: 50px; height: auto;"></td>
+                                <td>${data.status || ''}</td>
+                                <td><button class="btn btn-info btn-sm" onclick="viewProductDetails('${doc.id}')">View</button></td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                        document.getElementById("resultsTable").style.display = "table";
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error searching for product:", error);
+                });
+        }
+        
         // Function to view product details in a modal
         function viewProductDetails(docId) {
             db.collection("productlist").doc(docId).get().then((doc) => {
@@ -182,13 +235,11 @@
                         <tr><td><strong>Status:</strong></td><td>${data.status || ''}</td></tr>
                     `;
 
-                    // Display the larger image
                     const productImageContainer = document.getElementById("productImageContainer");
                     productImageContainer.innerHTML = `
                         <img src="${data.imagesrc || ''}" alt="Product Image" style="width: 250px; height: auto;">
                     `;
 
-                    // Show the modal
                     $('#productModal').modal('show');
                 }
             }).catch((error) => {
@@ -198,3 +249,4 @@
     </script>
 </body>
 </html>
+
