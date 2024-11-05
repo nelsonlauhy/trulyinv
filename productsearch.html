@@ -38,8 +38,8 @@
                 <tr>
                     <th>Title</th>
                     <th>Qty</th>
+                    <th>New Count</th>
                     <th>Image</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="resultsTableBody">
@@ -84,7 +84,7 @@
     <script>
         // Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCy3fmE6jjoju1u5Zv6PQbSuHq6718zNcE",
+            apiKey: "API_KEY",
             authDomain: "trulymarket-c25b6.firebaseapp.com",
             projectId: "trulymarket-c25b6",
             storageBucket: "trulymarket-c25b6.firebasestorage.app",
@@ -122,10 +122,10 @@
                             const row = document.createElement("tr");
 
                             row.innerHTML = `
-                                <td>${data.title || ''}</td>
+                                <td><a href="#" onclick="viewProductDetails('${doc.id}')">${data.title || ''}</a></td>
                                 <td>${data.qty || ''}</td>
+                                <td>${data.newcount || ''}</td>
                                 <td><img src="${data.imagesrc || ''}" alt="Product Image" style="width: 50px; height: auto;"></td>
-                                <td><button class="btn btn-info btn-sm" onclick="viewProductDetails('${doc.id}')">View</button></td>
                             `;
                             tableBody.appendChild(row);
                         }
@@ -160,19 +160,15 @@
                     qrbox: { width: 250, height: 250 }
                 },
                 (decodedText) => {
-                    // Display the scanned barcode in the input field
                     barcodeField.value = decodedText;
         
-                    // Stop the QR scanner
                     qrCodeReader.stop().then(() => {
                         document.getElementById("qr-reader").style.display = "none";
                     }).catch((err) => {
                         console.error("Failed to stop the QR scanner:", err);
                     });
         
-                    // Search Firebase for the captured barcode
                     searchByBarcode(decodedText);
-        
                 },
                 (errorMessage) => {
                     console.warn("QR code scanning failed:", errorMessage);
@@ -181,30 +177,26 @@
                 console.error("Unable to start QR code scanner:", err);
             });   
         }
-        
-        // Function to search Firebase by barcode
+
         function searchByBarcode(barcode) {
             const tableBody = document.getElementById("resultsTableBody");
             tableBody.innerHTML = ""; // Clear previous results
         
-            // Query Firebase for records where `barcode` matches the scanned value
             db.collection("productlist").where("barcode", "==", barcode).get()
                 .then((querySnapshot) => {
                     if (querySnapshot.empty) {
-                        // No records found
                         alert("No record found.");
                         document.getElementById("resultsTable").style.display = "none";
                     } else {
-                        // Records found, display them in the table
                         querySnapshot.forEach((doc) => {
                             const data = doc.data();
         
                             const row = document.createElement("tr");
                             row.innerHTML = `
-                                <td>${data.title || ''}</td>
+                                <td><a href="#" onclick="viewProductDetails('${doc.id}')">${data.title || ''}</a></td>
                                 <td>${data.qty || ''}</td>
+                                <td>${data.newcount || ''}</td>
                                 <td><img src="${data.imagesrc || ''}" alt="Product Image" style="width: 50px; height: auto;"></td>
-                                <td><button class="btn btn-info btn-sm" onclick="viewProductDetails('${doc.id}')">View</button></td>
                             `;
                             tableBody.appendChild(row);
                         });
@@ -215,8 +207,7 @@
                     console.error("Error searching for product:", error);
                 });
         }
-        
-        // Function to view product details in a modal
+
         function viewProductDetails(docId) {
             db.collection("productlist").doc(docId).get().then((doc) => {
                 if (doc.exists) {
@@ -229,7 +220,7 @@
                         <tr><td><strong>Barcode:</strong></td><td>${data.barcode || ''}</td></tr>
                         <tr><td><strong>Published:</strong></td><td>${data.published || ''}</td></tr>
                         <tr><td><strong>Best Before:</strong></td><td>${data.bestbefore || ''}</td></tr>
-                        <tr><td><strong>Status:</strong></td><td>${data.status || ''}</td></tr>
+                        <tr><td><strong>New Count:</strong></td><td>${data.newcount || ''}</td></tr>
                     `;
 
                     const productImageContainer = document.getElementById("productImageContainer");
