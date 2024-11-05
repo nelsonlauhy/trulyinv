@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner</title>
+</head>
+<body>
+    <h2>Barcode Scanner</h2>
+    <input type="text" id="barcode" placeholder="Scanned barcode will appear here" readonly>
+    <button onclick="startScanner()">Scan Barcode</button>
+    <video id="preview" style="width: 100%; max-width: 400px; display: none;"></video>
+
+    <!-- ZXing library for barcode scanning -->
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="scanner.js"></script>
+</body>
+</html>
